@@ -148,6 +148,7 @@ const homeApp: SubAppCreator = ({api, log}) => {
 	let channelPos: number | undefined;
 	let replacementSource: Recommendation[] = [];
 	let homeVideos: HomeVideo[] = [];
+	let hasIntervention = false;
 	const roots: ReactRoot[] = [];
 	const shown: RecommendationBase[] = [];
 
@@ -156,15 +157,33 @@ const homeApp: SubAppCreator = ({api, log}) => {
 	const replace = replaceHomeVideo(api, log);
 
 	const triggerEvent = async (): Promise<boolean> => {
+		if (homeVideos.length === 0) {
+			return false;
+		}
+
+		if (!hasIntervention) {
+			log('no intervention on home, just scraping...');
+
+			const event = new HomeShownEvent(
+				homeVideos.slice(0, 10),
+				[],
+				[],
+			);
+
+			api.postEvent(event, true).then(() => {
+				log('home shown event sent successfully');
+			}, err => {
+				log('error', 'failed to send home shown event', err);
+			});
+
+			return true;
+		}
+
 		if (shown.length === 0) {
 			return false;
 		}
 
 		if (replacementSource.length === 0) {
-			return false;
-		}
-
-		if (homeVideos.length === 0) {
 			return false;
 		}
 
@@ -188,15 +207,18 @@ const homeApp: SubAppCreator = ({api, log}) => {
 		});
 	};
 
-	const initialize = async (maybeNewChannelSource: string) => {
+	const initialize = async (maybeNewChannelSource?: string) => {
 		initializationAttempted = true;
+		const nToReplace = 3;
 
-		log('fetching recommendations to inject...');
+		if (maybeNewChannelSource) {
+			log('fetching recommendations to inject...');
 
-		replacementSource = await getRecommendationsToInject(api, log)(maybeNewChannelSource);
-		channelSource = maybeNewChannelSource;
+			replacementSource = await getRecommendationsToInject(api, log)(maybeNewChannelSource);
+			channelSource = maybeNewChannelSource;
 
-		log('injection source data:', replacementSource);
+			log('injection source data:', replacementSource);
+		}
 
 		if (homeVideos.length === 0) {
 			homeVideos = (await getRecommendationsOnPage(log)('a.ytd-thumbnail[href^="/watch?v="]')).splice(0, 10);
@@ -204,13 +226,13 @@ const homeApp: SubAppCreator = ({api, log}) => {
 
 		log('home videos:', homeVideos);
 
-		if (homeVideos.length < 3) {
+		if (homeVideos.length < nToReplace) {
 			console.error('not enough videos to replace');
 			removeLoaderMask();
 			return [];
 		}
 
-		if (replacementSource.length < 3) {
+		if (maybeNewChannelSource && replacementSource.length < nToReplace) {
 			console.error('not enough recommendations to inject');
 			removeLoaderMask();
 			return [];
@@ -224,44 +246,48 @@ const homeApp: SubAppCreator = ({api, log}) => {
 
 		const picturePromises: Array<Promise<void>> = [];
 
-		for (let i = 0; i < 3; ++i) {
-			const video = homeVideos[i];
-			const replacement = replacementSource[i];
+		if (replacementSource.length >= nToReplace) {
+			for (let i = 0; i < nToReplace; ++i) {
+				const video = homeVideos[i];
+				const replacement = replacementSource[i];
 
-			if (!video || !replacement) {
-				throw new Error('video or replacement is undefined - should never happen');
+				if (!video || !replacement) {
+					throw new Error('video or replacement is undefined - should never happen');
+				}
+
+				const picturePromise = new Promise<void>((resolve, reject) => {
+					const root = replace(video.videoId, replacement, resolve, reject);
+
+					if (root) {
+						log('video', video, 'replaced with', replacement, 'successfully');
+						roots.push(root);
+						shown.push(replacement);
+						picturePromises.push(picturePromise);
+					} else {
+						log('failed to replace video', video, 'with', replacement);
+						shown.push(video);
+					}
+				});
 			}
 
-			const picturePromise = new Promise<void>((resolve, reject) => {
-				const root = replace(video.videoId, replacement, resolve, reject);
-
-				if (root) {
-					log('video', video, 'replaced with', replacement, 'successfully');
-					roots.push(root);
-					shown.push(replacement);
-					picturePromises.push(picturePromise);
-				} else {
-					log('failed to replace video', video, 'with', replacement);
-					shown.push(video);
-				}
-			});
+			// Keep track the rest of the videos shown
+			shown.push(...homeVideos.slice(nToReplace));
 		}
 
-		// Keep track the rest of the videos shown
-		shown.push(...homeVideos.slice(3));
+		if (picturePromises.length > 0) {
+			log('waiting for all pictures to load...');
+			await Promise.race([
+				Promise.allSettled(picturePromises).then(() => {
+					log('all pictures loaded as expected');
+				}),
+				sleep(5000).then(() => {
+					log('timed out waiting for all pictures to load');
+				}),
+			]);
+			log('all pictures loaded');
 
-		log('waiting for all pictures to load...');
-		await Promise.race([
-			Promise.allSettled(picturePromises).then(() => {
-				log('all pictures loaded as expected');
-			}),
-			sleep(5000).then(() => {
-				log('timed out waiting for all pictures to load');
-			}),
-		]);
-		log('all pictures loaded');
-
-		removeLoaderMask();
+			removeLoaderMask();
+		}
 
 		triggerEvent().then(triggered => {
 			if (triggered) {
@@ -311,44 +337,41 @@ const homeApp: SubAppCreator = ({api, log}) => {
 				return [];
 			}
 
-			if (!state.config.channelSource) {
-				return [];
-			}
-
-			if (state.config.arm === 'control') {
-				return [];
-			}
-
-			if (state.config.phase !== 1) {
-				return [];
-			}
-
 			log('Setting up home app', state);
 
-			const {channelSource: maybeNewChannelSource} = state.config;
-			channelPos = state.config.pos;
+			if (state.config.arm === 'treatment' && state.config.phase === 1) {
+				hasIntervention = true;
 
-			if (!maybeNewChannelSource) {
-				log('no channel source in state, returning...');
-				return [];
-			}
+				const {channelSource: maybeNewChannelSource} = state.config;
+				channelPos = state.config.pos;
 
-			if (maybeNewChannelSource === channelSource) {
-				log('channel source unchanged, returning...');
-				return [];
-			}
+				if (!maybeNewChannelSource) {
+					log('no channel source in state, returning...');
+					return [];
+				}
 
-			log('got new channel source');
+				if (maybeNewChannelSource === channelSource) {
+					log('channel source unchanged, returning...');
+					return [];
+				}
 
-			if (replacementSource.length > 0) {
-				log('injection source already exists, returning...');
-				return [];
-			}
+				log('got new channel source');
 
-			initialize(maybeNewChannelSource).catch(err => {
+				if (replacementSource.length > 0) {
+					log('injection source already exists, returning...');
+					return [];
+				}
+
+				initialize(maybeNewChannelSource).catch(err => {
+					removeLoaderMask();
+					console.error('failed to initialize home app', err);
+				});
+			} else {
 				removeLoaderMask();
-				console.error('failed to initialize home app', err);
-			});
+				initialize().catch(err => {
+					console.error('failed to initialize home app', err);
+				});
+			}
 
 			return [];
 		},
