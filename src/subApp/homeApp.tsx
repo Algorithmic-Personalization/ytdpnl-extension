@@ -143,6 +143,21 @@ const getRecommendationsToInject = (api: Api, log: (...args: any[]) => void) => 
 	return recommendations;
 };
 
+const hasRecommendations = (rs: RecommendationBase[]): string =>
+	rs.map(r => r.videoId).join(',');
+
+const hashHomeShownEvent = (e: HomeShownEvent): string => {
+	const {defaultRecommendations, replacementSource, shown} = e;
+
+	const hash = [
+		hasRecommendations(defaultRecommendations),
+		hasRecommendations(replacementSource),
+		hasRecommendations(shown ?? []),
+	].join('-');
+
+	return hash;
+};
+
 const homeApp: SubAppCreator = ({api, log}) => {
 	let channelSource: string | undefined;
 	let channelPos: number | undefined;
@@ -151,6 +166,7 @@ const homeApp: SubAppCreator = ({api, log}) => {
 	let hasIntervention = false;
 	const roots: ReactRoot[] = [];
 	const shown: RecommendationBase[] = [];
+	let latestEventSentHash: string | undefined;
 
 	let initializationAttempted = false;
 
@@ -169,6 +185,15 @@ const homeApp: SubAppCreator = ({api, log}) => {
 				[],
 				[],
 			);
+
+			const hash = hashHomeShownEvent(event);
+
+			if (hash === latestEventSentHash) {
+				log('home shown event already sent, returning...');
+				return true;
+			}
+
+			latestEventSentHash = hash;
 
 			api.postEvent(event, true).then(() => {
 				log('home shown event sent successfully');
@@ -197,6 +222,15 @@ const homeApp: SubAppCreator = ({api, log}) => {
 			channelSource,
 			channelPos,
 		};
+
+		const hash = hashHomeShownEvent(event);
+
+		if (hash === latestEventSentHash) {
+			log('home shown event already sent, returning...');
+			return true;
+		}
+
+		latestEventSentHash = hash;
 
 		return api.postEvent(event, true).then(() => {
 			log('home shown event sent successfully');
