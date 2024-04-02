@@ -1,4 +1,4 @@
-type TabCallback = (tab: chrome.tabs.Tab) => void;
+import {log} from './lib';
 
 const getAllTabs = async (): Promise<chrome.tabs.Tab[]> => new Promise((resolve, reject) => {
 	chrome.tabs.query({}, tabs => {
@@ -23,8 +23,6 @@ const getActiveTab = async (): Promise<chrome.tabs.Tab | undefined> =>
 			resolve(tab);
 		});
 	});
-
-let activeTabId: number | undefined;
 
 chrome.tabs.onActivated.addListener(tab => {
 	console.log('New tab:', tab);
@@ -73,11 +71,27 @@ const main = async () => {
 		}
 
 		tabIds.add(id);
-	}
 
-	if (activeTab) {
-		activeTabId = activeTab.id;
+		if (id === activeTab?.id) {
+			log('active tab:', activeTab);
+
+			chrome.tabs.sendMessage(id, {
+				type: 'your-tab-is-active',
+				tabId: id,
+			}, response => {
+				console.log(`tab ${id} replied:`, response);
+			});
+		} else {
+			chrome.tabs.sendMessage(id, {
+				type: 'your-tab-is-not-active',
+				tabId: id,
+			}, response => {
+				console.log(`tab ${id} replied:`, response);
+			});
+		}
 	}
 };
 
-main().catch(console.error);
+main().catch(err => {
+	log('error', 'failed to start background script:', err);
+});
