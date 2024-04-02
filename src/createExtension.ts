@@ -323,12 +323,13 @@ export const createExtension = (api: Api, log: (...args: any[]) => void) => (sub
 				void fetchConfig();
 			}
 
-			// FIXME: do not open session if already opened
-			api.newSession().then(uuid => {
-				log('New session created:', uuid);
-			}, err => {
-				log('error', 'error creating new session:', err);
-			});
+			if (!api.getSession()) {
+				api.newSession().then(uuid => {
+					log('New session created:', uuid);
+				}, err => {
+					log('error', 'error creating new session:', err);
+				});
+			}
 		}
 	};
 
