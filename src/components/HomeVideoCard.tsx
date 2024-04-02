@@ -2,7 +2,7 @@ import React, {useState, useRef, useEffect} from 'react';
 import {Typography} from '@mui/material';
 
 import type Recommendation from '../common/types/Recommendation';
-import {imageExists} from '../lib';
+import {imageExists, log} from '../lib';
 
 export const getHomeMiniatureUrl = (videoId: string) =>
 	`https://i.ytimg.com/vi/${videoId}/hq720.jpg`;
@@ -53,7 +53,9 @@ export const HomeVideoCard: React.FC<Recommendation & {
 			if (!picExists) {
 				setPictureUrl(candidateMiniatureUrls[1]);
 			}
-		})().catch(console.error);
+		})().catch(e => {
+			log('error', 'failed to check whether image exists:', e);
+		});
 	});
 
 	return (

@@ -99,7 +99,7 @@ export const createExtension = (api: Api, log: (...args: any[]) => void) => (sub
 				api.postEvent(event, true).then(() => {
 					log('watch time event sent successfully');
 				}, err => {
-					console.error('failed to send watch time event', err);
+					log('error', 'failed to send watch time event', err);
 				});
 
 				watchTime = 0;
@@ -135,10 +135,10 @@ export const createExtension = (api: Api, log: (...args: any[]) => void) => (sub
 			if (config.kind === 'Success') {
 				triggerUpdate({config: config.value});
 			} else {
-				console.error('could not get config:', config.message);
+				log('error', 'could not get config:', config.message);
 			}
 		}).catch(err => {
-			console.error('error getting config:', err);
+			log('error', 'error getting config:', err);
 		});
 	};
 
@@ -157,7 +157,7 @@ export const createExtension = (api: Api, log: (...args: any[]) => void) => (sub
 				triggerUpdate({loggedInYouTube: isLoggedIn});
 			}
 		}).catch(err => {
-			console.error('error checking if logged in to YouTube', err);
+			log('error', 'error checking if logged in to YouTube', err);
 		});
 	};
 
@@ -258,7 +258,7 @@ export const createExtension = (api: Api, log: (...args: any[]) => void) => (sub
 		for (const app of subAppInstances) {
 			app.onUpdate(updatedState, state).catch(err => {
 				removeLoaderMask();
-				console.error('Error updating sub-app', app.getName(), ':', err);
+				log('error', 'error updating sub-app', app.getName(), ':', err);
 			});
 		}
 
@@ -269,7 +269,7 @@ export const createExtension = (api: Api, log: (...args: any[]) => void) => (sub
 		try {
 			doTriggerUpdate(newState);
 		} catch (err) {
-			console.error('Error triggering apps update:', err);
+			log('error', 'error triggering apps update:', err);
 			removeLoaderMask();
 		}
 	};
@@ -291,7 +291,7 @@ export const createExtension = (api: Api, log: (...args: any[]) => void) => (sub
 				},
 			});
 		}, err => {
-			console.error('Error getting home link:', err);
+			log('error', 'error getting home link:', err);
 		});
 	};
 
@@ -326,7 +326,7 @@ export const createExtension = (api: Api, log: (...args: any[]) => void) => (sub
 			api.newSession().then(uuid => {
 				log('New session created:', uuid);
 			}, err => {
-				console.error('Error creating new session:', err);
+				log('error', 'error creating new session:', err);
 			});
 		}
 	};
@@ -336,7 +336,7 @@ export const createExtension = (api: Api, log: (...args: any[]) => void) => (sub
 			await doStart();
 		} catch (err) {
 			removeLoaderMask();
-			console.error('Failed to start extension:', err);
+			log('error', 'failed to start extension:', err);
 		}
 	};
 

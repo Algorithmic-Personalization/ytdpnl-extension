@@ -56,7 +56,8 @@ const installLoader = () => {
 		maskingDiv.appendChild(helpText);
 	}
 
-	/* TODO:
+	// eslint-disable-next-line no-warning-comments
+	/* TODO (maybe):
 		Watch for changes on the page to add another more
 		selective loader.
 	*/
@@ -75,5 +76,5 @@ const start = async () => {
 };
 
 start().catch(e => {
-	console.error('Failed to start loader:', e);
+	log('error', 'failed to start loader:', e);
 });

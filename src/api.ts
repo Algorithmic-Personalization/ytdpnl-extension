@@ -87,7 +87,7 @@ const saveStoredEvents = (events: StoredEvent[]) => {
 		const data = compressToUTF16(JSON.stringify(events));
 		saveToLocalStorage(eventsStorageKey, data);
 	} catch (e) {
-		console.error('Failed to store events locally, forgetting about them...', e);
+		log('error', 'Failed to store events locally, forgetting about them...', e);
 		saveToLocalStorage(eventsStorageKey, '');
 	}
 };
@@ -184,7 +184,7 @@ export const createApi = (apiUrl: string, overrideParticipantCode?: string): Api
 			p.then(() => {
 				sessionPromise = undefined;
 			}).catch(e => {
-				console.error('Failed to create session:', e);
+				log('error', 'failed to create session:', e);
 				sessionPromise = undefined;
 			});
 
@@ -350,5 +350,5 @@ export const createApi = (apiUrl: string, overrideParticipantCode?: string): Api
 
 setInterval(retryToPostStoredEvents, retryDelay);
 retryToPostStoredEvents().catch(e => {
-	console.error('Failed to retry to post stored events', e);
+	log('error', 'failed to retry to post stored events', e);
 });

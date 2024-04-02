@@ -46,12 +46,12 @@ const replaceHomeVideo = (api: Api, log: (...args: any[]) => void) => (
 	const links = Array.from(document.querySelectorAll(`a.ytd-thumbnail[href="/watch?v=${videoId}"]`));
 
 	if (links.length === 0) {
-		console.error('could not find link for', videoId);
+		log('error', 'could not find link for', videoId);
 		return undefined;
 	}
 
 	if (links.length > 1) {
-		console.error('found multiple links for', videoId);
+		log('error', 'found multiple links for', videoId);
 		return undefined;
 	}
 
@@ -60,7 +60,7 @@ const replaceHomeVideo = (api: Api, log: (...args: any[]) => void) => (
 	const parent = findParentById('content')(link);
 
 	if (!parent) {
-		console.error('could not find parent for', videoId);
+		log('error', 'could not find parent for', videoId);
 		return undefined;
 	}
 
@@ -236,7 +236,7 @@ const homeApp: SubAppCreator = ({api, log}) => {
 			log('home shown event sent successfully');
 			return true;
 		}, err => {
-			console.error('failed to send home shown event', err);
+			log('error', 'failed to send home shown event', err);
 			return false;
 		});
 	};
@@ -261,13 +261,13 @@ const homeApp: SubAppCreator = ({api, log}) => {
 		log('home videos:', homeVideos);
 
 		if (homeVideos.length < nToReplace) {
-			console.error('not enough videos to replace');
+			log('error', 'not enough videos to replace');
 			removeLoaderMask();
 			return [];
 		}
 
 		if (maybeNewChannelSource && replacementSource.length < nToReplace) {
-			console.error('not enough recommendations to inject');
+			log('error', 'not enough recommendations to inject');
 			removeLoaderMask();
 			return [];
 		}
@@ -327,10 +327,10 @@ const homeApp: SubAppCreator = ({api, log}) => {
 			if (triggered) {
 				log('home shown event triggered successfully upon app initialization');
 			} else {
-				console.error('home shown event not triggered upon app initialization, something went wrong');
+				log('error', 'home shown event not triggered upon app initialization, something went wrong');
 			}
 		}, err => {
-			console.error('failed to trigger home shown event upon update', err);
+			log('error', 'failed to trigger home shown event upon update', err);
 		});
 
 		return [];
@@ -358,7 +358,7 @@ const homeApp: SubAppCreator = ({api, log}) => {
 						log('home shown event not triggered upon URL change, app may not be ready');
 					}
 				}, err => {
-					console.error('failed to trigger home shown event upon URL change', err);
+					log('error', 'failed to trigger home shown event upon URL change', err);
 				});
 			}
 
@@ -398,12 +398,12 @@ const homeApp: SubAppCreator = ({api, log}) => {
 
 				initialize(maybeNewChannelSource).catch(err => {
 					removeLoaderMask();
-					console.error('failed to initialize home app', err);
+					log('error', 'failed to initialize home app', err);
 				});
 			} else {
 				removeLoaderMask();
 				initialize().catch(err => {
-					console.error('failed to initialize home app', err);
+					log('error', 'failed to initialize home app', err);
 				});
 			}
 

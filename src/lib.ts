@@ -23,6 +23,11 @@ export const log = (...args: any[]) => {
 		return;
 	}
 
+	if (args[0] === 'error') {
+		console.error(...args.slice(1));
+		return;
+	}
+
 	console.log(...args);
 };
 
