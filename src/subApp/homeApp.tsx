@@ -255,7 +255,11 @@ const homeApp: SubAppCreator = ({api, log}) => {
 		}
 
 		if (homeVideos.length === 0) {
-			homeVideos = (await getRecommendationsOnPage(log)('a.ytd-thumbnail[href^="/watch?v="]')).splice(0, 10);
+			homeVideos = (
+				await getRecommendationsOnPage(log)(
+					'a.ytd-thumbnail[href^="/watch?v="]',
+					10,
+				)).splice(0, 10);
 		}
 
 		log('home videos:', homeVideos);
